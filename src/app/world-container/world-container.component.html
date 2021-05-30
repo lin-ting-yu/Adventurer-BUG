@@ -1,1 +1,33 @@
-<p>world-container works!</p>
+<div #canvasContainer class="canvas-container"></div>
+<div class="msg">
+  <div
+    class="btn btn-1"
+    (mousedown)="jumpDown()"
+    (mouseup)="jumpUp()"
+    (teachstart)="jumpDown()"
+    (teachend)="jumpUp()"
+    [ngClass]="{'down': !isSpaceUp}"
+  >
+    SPACE
+  </div>
+  <div
+    class="btn btn-2"
+    (mousedown)="leftDown()"
+    (mouseup)="leftUp()"
+    (teachstart)="leftDown()"
+    (teachend)="leftUp()"
+    [ngClass]="{'down': isMoveLeft}"
+  >
+    ←
+  </div>
+  <div
+    class="btn btn-2"
+    (mousedown)="rightDown()"
+    (mouseup)="rightUp()"
+    (teachstart)="rightDown()"
+    (teachend)="rightUp()"
+    [ngClass]="{'down': isMoveRight}"
+  >
+    →
+  </div>
+</div>
