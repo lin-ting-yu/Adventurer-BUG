@@ -1,33 +1,29 @@
 <div #canvasContainer class="canvas-container"></div>
-<div class="msg">
-  <div
-    class="btn btn-1"
-    (mousedown)="jumpDown()"
-    (mouseup)="jumpUp()"
-    (teachstart)="jumpDown()"
-    (teachend)="jumpUp()"
-    [ngClass]="{'down': !isSpaceUp}"
-  >
-    SPACE
-  </div>
-  <div
-    class="btn btn-2"
-    (mousedown)="leftDown()"
-    (mouseup)="leftUp()"
-    (teachstart)="leftDown()"
-    (teachend)="leftUp()"
-    [ngClass]="{'down': isMoveLeft}"
-  >
-    ←
-  </div>
-  <div
-    class="btn btn-2"
-    (mousedown)="rightDown()"
-    (mouseup)="rightUp()"
-    (teachstart)="rightDown()"
-    (teachend)="rightUp()"
-    [ngClass]="{'down': isMoveRight}"
-  >
-    →
+<div class="check-touch-end" (touchend)="jumpUp(); leftUp(); rightUp();">
+  <div class="msg">
+    <div
+      class="btn btn-1"
+      data-content="SPACE"
+      (mousedown)="jumpDown()"
+      (mouseup)="jumpUp()"
+      (touchstart)="jumpDown()"
+      [ngClass]="{ down: !isSpaceUp }"
+    ></div>
+    <div
+      class="btn btn-2"
+      data-content="←"
+      (mousedown)="leftDown()"
+      (mouseup)="leftUp()"
+      (touchstart)="leftDown()"
+      [ngClass]="{ down: isMoveLeft }"
+    ></div>
+    <div
+      class="btn btn-2"
+      data-content="→"
+      (mousedown)="rightDown()"
+      (mouseup)="rightUp()"
+      (touchstart)="rightDown()"
+      [ngClass]="{ down: isMoveRight }"
+    ></div>
   </div>
 </div>

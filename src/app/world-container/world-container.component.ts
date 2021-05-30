@@ -26,8 +26,8 @@ export class WorldContainerComponent implements OnInit {
   private readonly scene = new THREE.Scene();
 
   // 相機相關
-  private readonly frustumSize = 90;
   private aspect = window.innerHeight / window.innerWidth;
+  private frustumSize = 90 - (this.aspect < 1 ? 0 : this.aspect * 15);
   private readonly camera = new THREE.OrthographicCamera(
     this.frustumSize / -2,
     this.frustumSize / 2,
@@ -109,13 +109,11 @@ export class WorldContainerComponent implements OnInit {
   @HostListener('window:resize', ['$event'])
   onResize() {
     this.aspect = window.innerHeight / window.innerWidth;
-
+    this.frustumSize = 90 - (this.aspect < 1 ? 0 : this.aspect * 30);
     this.camera.left = this.frustumSize / -2;
     this.camera.right = this.frustumSize / 2;
     this.camera.top = (this.frustumSize * this.aspect) / 2;
     this.camera.bottom = (-this.frustumSize * this.aspect) / 2;
-
-    this.camera.updateProjectionMatrix();
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
