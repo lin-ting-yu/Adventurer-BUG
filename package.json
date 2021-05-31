@@ -2,12 +2,7 @@
   "name": "adventurer-bug",
   "version": "0.0.0",
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "test": "ng test",
-    "lint": "ng lint",
-    "e2e": "ng e2e"
+    "buildToGithub": "ng build --prod --base-href=https://lin-ting-yu.github.io/Adventurer-BUG/ && ngh -no-silent --dir dist/Adventurer-BUG"
   },
   "private": true,
   "dependencies": {
@@ -19,6 +14,7 @@
     "@angular/platform-browser": "~10.0.14",
     "@angular/platform-browser-dynamic": "~10.0.14",
     "@angular/router": "~10.0.14",
+    "angular-cli-ghpages": "^1.0.0-rc.2",
     "createjs-module": "^0.8.3",
     "rxjs": "~6.5.5",
     "three": "^0.123.0",

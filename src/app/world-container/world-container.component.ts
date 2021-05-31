@@ -7,10 +7,8 @@ import {
   ViewChild,
 } from '@angular/core';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 
-window.THREE = THREE;
 @Component({
   selector: 'app-world-container',
   templateUrl: './world-container.component.html',
@@ -202,7 +200,7 @@ export class WorldContainerComponent implements OnInit {
 
   private load3DPoly(): void {
     // 載入主角模型
-    this.OBJLoader.load('/assets/3D-poly/bug6.obj', (obj) => {
+    this.OBJLoader.load('./assets/3D-poly/bug6.obj', (obj) => {
       this.robotPoly = obj as THREE.Group;
 
       this.animationService = new AnimationService(this.robotPoly);
