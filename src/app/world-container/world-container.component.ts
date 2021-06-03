@@ -3,19 +3,22 @@ import {
   Component,
   ElementRef,
   HostListener,
+  OnDestroy,
   OnInit,
   ViewChild,
 } from '@angular/core';
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, sampleTime } from 'rxjs/operators';
 
 @Component({
   selector: 'app-world-container',
   templateUrl: './world-container.component.html',
   styleUrls: ['./world-container.component.scss'],
 })
-export class WorldContainerComponent implements OnInit {
-  constructor() {}
+export class WorldContainerComponent implements OnInit, OnDestroy {
+  constructor() { }
 
   @ViewChild('canvasContainer') canvasContainer: ElementRef;
   private readonly OBJLoader = new OBJLoader();
@@ -53,7 +56,8 @@ export class WorldContainerComponent implements OnInit {
   private isCanJump: boolean = false;
   isSpaceUp: boolean = true;
   private isJumping: boolean = false;
-
+  private jumpSubject: Subject<void> = new Subject();
+  private jumpSubscription$: Subscription;
   // 玩家碰撞箱
   private collisionBox: THREE.Mesh<THREE.Geometry, THREE.MeshPhongMaterial> =
     null;
@@ -64,7 +68,7 @@ export class WorldContainerComponent implements OnInit {
   // 方向判斷
   private direction = new THREE.Vector3();
 
-  // 碰撞用的 Raycaster
+  // 左右碰撞用的 Raycaster
   private readonly horizontalRaycaster = new THREE.Raycaster(
     new THREE.Vector3(),
     new THREE.Vector3(),
@@ -79,9 +83,16 @@ export class WorldContainerComponent implements OnInit {
     0,
     1
   );
+  // 跳躍判斷採地用的 Raycaster
+  private readonly headRaycaster = new THREE.Raycaster(
+    new THREE.Vector3(),
+    new THREE.Vector3(0, 1, 0),
+    0,
+    1
+  );
 
   // 主體底面座標，判定碰撞用
-  private footerVector3List: THREE.Vector3[] = [];
+  private checkVector3List: THREE.Vector3[] = [];
 
   private materialData = {
     robot: new THREE.MeshPhongMaterial({
@@ -129,6 +140,7 @@ export class WorldContainerComponent implements OnInit {
         break;
       case ' ': // space
         this.jumpDown();
+        // this.jumpSubject.next();
         break;
     }
   }
@@ -151,10 +163,21 @@ export class WorldContainerComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.init();
+    this.jumpSubscription$ = this.jumpSubject.asObservable()
+      .pipe(
+        sampleTime(500)
+      )
+      .subscribe(() => {
+        this.jumpDown()
+      })
+    this.threeInit();
   }
 
-  private async init() {
+  ngOnDestroy(): void {
+    this.jumpSubscription$.unsubscribe()
+  }
+
+  private async threeInit() {
     await this.canvasContainer;
 
     // 參數為座標軸長度
@@ -217,7 +240,7 @@ export class WorldContainerComponent implements OnInit {
       const min = geometry.boundingBox.min;
 
       // 只需要判斷接觸地面的點
-      this.footerVector3List = [
+      this.checkVector3List = [
         new THREE.Vector3(max.x, 0, max.z),
         new THREE.Vector3(max.x, 0, min.z),
         new THREE.Vector3(min.x, 0, max.z),
@@ -262,9 +285,9 @@ export class WorldContainerComponent implements OnInit {
     const minY = 0.2;
 
     let isOnObject = false;
-
+    let onObjectIntersections: THREE.Intersection[] = [];
     // 檢查所有底部的點
-    this.footerVector3List.forEach((vector3) => {
+    this.checkVector3List.forEach((vector3) => {
       const o = this.collisionBox.position.clone();
       // 讓向量始終垂直向下
       o.x += vector3.x;
@@ -273,18 +296,58 @@ export class WorldContainerComponent implements OnInit {
       this.downRaycaster.ray.origin.copy(o);
       this.downRaycaster.ray.origin.y -= minY;
 
-      const intersections = this.downRaycaster.intersectObjects(
+      onObjectIntersections.push(...this.downRaycaster.intersectObjects(
+        this.needCheckList,
+        true
+      ));
+      isOnObject = isOnObject || onObjectIntersections.length > 0;
+    });
+
+    let isUnderObject = false;
+    // 檢查所有頭的點
+    this.checkVector3List.forEach((vector3) => {
+      const o = this.collisionBox.position.clone();
+      // 讓向量始終垂直向下
+      o.x += vector3.x;
+      o.z += vector3.z;
+
+      this.headRaycaster.ray.origin.copy(o);
+      this.headRaycaster.ray.origin.y += minY;
+
+      const intersections = this.headRaycaster.intersectObjects(
         this.needCheckList,
         true
       );
-      isOnObject = isOnObject || intersections.length > 0;
+      isUnderObject = isUnderObject || intersections.length > 0;
     });
+
+    if (isUnderObject) {
+      this.controlPosition.y = Math.min(this.controlPosition.y, 0);
+    }
 
     //判断是否停在了立方体上面
     if (isOnObject) {
+
+
       this.controlPosition.y = Math.max(0, this.controlPosition.y);
+
+
       if (this.isJumping) {
         this.isJumping = false;
+        // 這邊用偷吃步的方式計算最頂部
+        // 因為這裡的碰撞物都是平面
+        // 所以直接取碰撞物的 y 座標當作最後值
+        // 降低陷入地板的可能
+        const maxPosY: number = (() => {
+          let maxY = -100;
+          onObjectIntersections.forEach(intersections => {
+            const o = intersections.object as THREE.Mesh;
+            maxY = Math.max(maxY, o.position.y)
+
+          });
+          return maxY;
+        })();
+        this.controlPosition.y = Math.min(maxPosY, this.controlPosition.y);
         this.animationService.gotoAndPlay('jumpEnd').then(() => {
           this.isCanJump = true;
           this.isMoving = false;
@@ -297,19 +360,26 @@ export class WorldContainerComponent implements OnInit {
     //根据速度值移动控制器
     this.collisionBox.translateY(this.controlPosition.y);
     // 這邊 1 寫死 有待一日寫成彈性
-    if (this.collisionBox.position.y <= 1 + minY) {
-      this.controlPosition.y = 0;
-      this.collisionBox.position.y = 1 + minY;
-      if (this.isJumping) {
-        this.isJumping = false;
-        this.animationService.gotoAndPlay('jumpEnd').then(() => {
-          this.isCanJump = true;
-          this.isMoving = false;
-          this.isStoping = false;
-        });
-      } else {
-        this.isCanJump = true;
-      }
+    // 這段拿掉就可以往下摔死
+    // if (this.collisionBox.position.y <= 1 + minY) {
+    //   this.controlPosition.y = 0;
+    //   this.collisionBox.position.y = 1 + minY;
+    //   if (this.isJumping) {
+    //     this.isJumping = false;
+    //     this.animationService.gotoAndPlay('jumpEnd').then(() => {
+    //       this.isCanJump = true;
+    //       this.isMoving = false;
+    //       this.isStoping = false;
+    //     });
+    //   } else {
+    //     this.isCanJump = true;
+    //   }
+    // }
+    if (this.collisionBox.position.y <= -50) {
+      this.collisionBox.position.x = 0;
+      this.collisionBox.position.y = 20;
+      this.collisionBox.position.z = 0;
+      this.controlPosition.y = -this.G
     }
   }
 
@@ -390,14 +460,14 @@ export class WorldContainerComponent implements OnInit {
   }
 
   private createObstacle(): void {
-    const floor = this.getBox(30, 20, 5, false);
-    const wall1 = this.getBox(2, 100, 5);
-    const wall2 = this.getBox(2, 100, 5);
-    floor.position.y = -10;
-    wall1.position.x = -17;
-    wall2.position.x = 17;
-    wall1.visible = false;
-    wall2.visible = false;
+    const floor = this.getBox(30, 20, 5);
+    // const wall1 = this.getBox(2, 100, 5);
+    // const wall2 = this.getBox(2, 100, 5);
+    floor.position.y = 0;
+    // wall1.position.x = -17;
+    // wall2.position.x = 17;
+    // wall1.visible = false;
+    // wall2.visible = false;
 
     [
       // width, height, depth, x, y
@@ -421,6 +491,8 @@ export class WorldContainerComponent implements OnInit {
       new THREE.BoxGeometry(width, height, depth),
       this.materialData.floor
     );
+    // 把重心偏移到頂部
+    mesh.geometry.translate(0, height / -2, 0);
     mesh.receiveShadow = true;
     if (isCheck) {
       this.needCheckList.push(mesh);
@@ -453,6 +525,7 @@ export class WorldContainerComponent implements OnInit {
   }
   jumpDown(): void {
     if (this.isCanJump && this.isSpaceUp && !this.isJumping) {
+      console.log('jump', this.isCanJump, this.isSpaceUp)
       this.isCanJump = false;
       this.animationService
         .gotoAndPlay('jumpStart')
