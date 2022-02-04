@@ -2,7 +2,8 @@
   "name": "adventurer-bug",
   "version": "0.0.0",
   "scripts": {
-    "buildToGithub": "ng build --prod --base-href=https://lin-ting-yu.github.io/Adventurer-BUG/ && ngh -no-silent --dir dist/Adventurer-BUG"
+    "buildToGithub": "ng build --prod --base-href=https://lin-ting-yu.github.io/Adventurer-BUG/ && ngh -no-silent --dir dist/Adventurer-BUG",
+    "start": "ng serve --port=3002"
   },
   "private": true,
   "dependencies": {

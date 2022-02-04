@@ -56,8 +56,10 @@ export class WorldContainerComponent implements OnInit, OnDestroy {
   private isCanJump: boolean = false;
   isSpaceUp: boolean = true;
   private isJumping: boolean = false;
-  private jumpSubject: Subject<void> = new Subject();
+  private readonly jumpSubject: Subject<void> = new Subject();
   private jumpSubscription$: Subscription;
+  private readonly animateSubject = new Subject<void>();
+  private animateSubscription$: Subscription;
   // 玩家碰撞箱
   private collisionBox: THREE.Mesh<THREE.Geometry, THREE.MeshPhongMaterial> =
     null;
@@ -168,13 +170,22 @@ export class WorldContainerComponent implements OnInit, OnDestroy {
         sampleTime(500)
       )
       .subscribe(() => {
-        this.jumpDown()
-      })
+        this.jumpDown();
+      });
+    this.animateSubscription$ = this.animateSubject
+      .pipe(
+        sampleTime(16)
+      )
+      .subscribe(() => {
+        this.controlAction();
+        this.renderer.render(this.scene, this.camera);
+      });
     this.threeInit();
   }
 
   ngOnDestroy(): void {
-    this.jumpSubscription$.unsubscribe()
+    this.jumpSubscription$.unsubscribe();
+    this.animateSubscription$.unsubscribe();
   }
 
   private async threeInit() {
@@ -342,7 +353,7 @@ export class WorldContainerComponent implements OnInit, OnDestroy {
           let maxY = -100;
           onObjectIntersections.forEach(intersections => {
             const o = intersections.object as THREE.Mesh;
-            maxY = Math.max(maxY, o.position.y)
+            maxY = Math.max(maxY, o.position.y);
 
           });
           return maxY;
@@ -379,7 +390,7 @@ export class WorldContainerComponent implements OnInit, OnDestroy {
       this.collisionBox.position.x = 0;
       this.collisionBox.position.y = 20;
       this.collisionBox.position.z = 0;
-      this.controlPosition.y = -this.G
+      this.controlPosition.y = -this.G;
     }
   }
 
@@ -503,8 +514,7 @@ export class WorldContainerComponent implements OnInit, OnDestroy {
 
   private animate() {
     requestAnimationFrame(() => this.animate());
-    this.controlAction();
-    this.renderer.render(this.scene, this.camera);
+    this.animateSubject.next();
   }
 
   leftUp(): void {
@@ -525,7 +535,7 @@ export class WorldContainerComponent implements OnInit, OnDestroy {
   }
   jumpDown(): void {
     if (this.isCanJump && this.isSpaceUp && !this.isJumping) {
-      console.log('jump', this.isCanJump, this.isSpaceUp)
+      console.log('jump', this.isCanJump, this.isSpaceUp);
       this.isCanJump = false;
       this.animationService
         .gotoAndPlay('jumpStart')
